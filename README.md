@@ -22,7 +22,7 @@
 2. **Upload Files**
    - Click **Upload** → **Choose File** → Select `employees.csv`.
    - Click **Upload**.
-   - Repeat for `departments.csv`.
+  
 
 
   
@@ -33,9 +33,9 @@
 ### **1. Open Hue Query Editor**
 
 
-### **2. Create Temporary Tables**
+### **2. Create Temporary Table**
 ```sql
-CREATE TABLE temp_employees (
+CREATE External TABLE temp_employees (
     emp_id INT,
     name STRING,
     age INT,
@@ -50,21 +50,12 @@ FIELDS TERMINATED BY ','
 STORED AS TEXTFILE;
 ```
 
-```sql
-CREATE TABLE temp_departments (
-    dept_id INT,
-    department_name STRING,
-    location STRING
-) 
-ROW FORMAT DELIMITED 
-FIELDS TERMINATED BY ',' 
-STORED AS TEXTFILE;
-```
+
 
 ### **3. Load Data into Temporary Tables**
 ```sql
 LOAD DATA INPATH '/user/hive/warehouse/employees.csv' INTO TABLE temp_employees;
-LOAD DATA INPATH '/user/hive/warehouse/departments.csv' INTO TABLE temp_departments;
+
 ```
 
 ---
@@ -94,19 +85,44 @@ FIELDS TERMINATED BY ','
 STORED AS PARQUET;
 
 ```
-
-### **3. move Data into Partitioned Table**
+### **2. Alter the table: run each query individually**
 ```sql
-INSERT OVERWRITE TABLE employees_partitioned PARTITION (department)
-SELECT emp_id, name, age, job_role, salary, project, join_date, department
-FROM temp_employees;
+ALTER TABLE employees_partitioned ADD PARTITION (department='Marcketing');
+ALTER TABLE employees_partitioned ADD PARTITION (department='HR');
+ALTER TABLE employees_partitioned ADD PARTITION (department='IT');
+ALTER TABLE employees_partitioned ADD PARTITION (department='Finance');
+ALTER TABLE employees_partitioned ADD PARTITION (department='Operations');
+```
+
+### **3. move Data into Partitioned Table: run each query individually**
+```sql
+INSERT INTO TABLE employees_partitioned PARTITION(department='Marketing')
+SELECT emp_id, name, age, job_role, salary, project, join_date
+FROM temp_employees WHERE department='Marketing';
+
+INSERT INTO TABLE employees_partitioned PARTITION(department='HR')
+SELECT emp_id, name, age, job_role, salary, project, join_date
+FROM temp_employees WHERE department='HR';
+
+INSERT INTO TABLE employees_partitioned PARTITION(department='IT')
+SELECT emp_id, name, age, job_role, salary, project, join_date
+FROM temp_employees WHERE department='IT';
+
+INSERT INTO TABLE employees_partitioned PARTITION(department='Finance')
+SELECT emp_id, name, age, job_role, salary, project, join_date
+FROM temp_employees WHERE department='Finance';
+
+INSERT INTO TABLE employees_partitioned PARTITION(department='Operations')
+SELECT emp_id, name, age, job_role, salary, project, join_date
+FROM temp_employees WHERE department='Operations';
+
 
 ```
 
-### **4. Alter Table to Add Partitions**
+### **4. Check partitioned data to make sure its coreect**
 
 ```sql
-MSCK REPAIR TABLE employees_partitioned;
+SELECT * FROM employees_partitioned WHERE department = 'Marketing' LIMIT 5;
 
 ```
 
@@ -172,22 +188,23 @@ SELECT * FROM (
 
 ---
 
-## **Pushing Files to GitHub**
-```sh
-git init
-git add .
-git commit -m "Added HQL queries and output files"
-git branch -M main
-git remote add origin <your_github_repo_url>
-git push origin main
+## **Creating hql files: type following in terminal **
+```sql
+echo "SELECT * FROM employees_partitioned WHERE year(join_date) > 2015;" > query1.hql
+echo "SELECT department, AVG(salary) AS avg_salary FROM employees_partitioned GROUP BY department;" > query2.hql
+echo "SELECT * FROM employees_partitioned WHERE project = 'Alpha';" > query3.hql
+echo "SELECT job_role, COUNT(*) AS employee_count FROM employees_partitioned GROUP BY job_role;" > query4.hql
+echo "SELECT e1.* FROM employees_partitioned e1 JOIN (SELECT department, AVG(salary) AS avg_salary FROM employees_partitioned GROUP BY department) e2 ON e1.department = e2.department WHERE e1.salary > e2.avg_salary;" > query5.hql
+echo "SELECT department, COUNT(*) AS emp_count FROM employees_partitioned GROUP BY department ORDER BY emp_count DESC LIMIT 1;" > query6.hql
+echo "SELECT * FROM employees_partitioned WHERE emp_id IS NOT NULL AND name IS NOT NULL AND age IS NOT NULL AND job_role IS NOT NULL AND salary IS NOT NULL AND project IS NOT NULL AND join_date IS NOT NULL AND department IS NOT NULL;" > query7.hql
+echo "SELECT e.*, d.location FROM employees_partitioned e JOIN temp_departments d ON e.department = d.department_name;" > query8.hql
+echo "SELECT emp_id, name, department, salary, RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank FROM employees_partitioned;" > query9.hql
+echo "SELECT * FROM (SELECT emp_id, name, department, salary, RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank FROM employees_partitioned) ranked WHERE rank <= 3;" > query10.hql
+
 ```
 
 ---
 
-## **Final Notes**
-✅ Data successfully partitioned and moved.
-✅ Queries executed and outputs saved.
-✅ All files (`.hql`, `output.txt`, `README.md`) pushed to GitHub.
 
-🚀 Your project is now complete! 🎉
+
 

@@ -1,0 +1,1 @@
+SELECT e1.* FROM employees_partitioned e1 JOIN (SELECT department, AVG(salary) AS avg_salary FROM employees_partitioned GROUP BY department) e2 ON e1.department = e2.department WHERE e1.salary > e2.avg_salary;
